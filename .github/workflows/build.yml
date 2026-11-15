@@ -23,17 +23,13 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      # Install Android SDK — sets up sdkmanager, accepts licenses automatically
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          log-accepted-android-sdk-licenses: false
-
-      # Install the exact platform this project compiles against (SDK 36)
-      # The release(36) { minorApiLevel = 1 } DSL in AGP 9.x maps to platforms;android-36
-      - name: Install Android SDK platform 36
+      # Use the pre-installed SDK on the runner — no third-party action needed
+      # Accept licenses and install only the platform/build-tools this project needs
+      - name: Install Android SDK components
         run: |
-          sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | $SDKMANAGER --licenses > /dev/null 2>&1 || true
+          $SDKMANAGER "platforms;android-36" "build-tools;36.0.0"
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -42,6 +38,7 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx2g -Dorg.gradle.daemon=false"
 
       - name: Upload APK
